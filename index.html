@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meme Generator</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(0, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255, 0, 255, 0.1) 0%, transparent 50%),
+        linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0f0f1e 100%);
+      color: rgba(255, 255, 255, 0.9);
+      padding: clamp(1.5rem, 4vw, 2.5rem);
+      position: relative;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: 
+        linear-gradient(rgba(0, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: clamp(1.75rem, 4vw, 2.25rem);
+      font-weight: 300;
+      margin-bottom: 2rem;
+      color: rgba(255, 255, 255, 0.95);
+      letter-spacing: -0.02em;
+      text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+      position: relative;
+      z-index: 1;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      position: relative;
+      z-index: 1;
+    }
+
+    .panel-upload {
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .panel-upload label {
+      padding: 0.75rem 1.5rem;
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      background: rgba(0, 255, 255, 0.05);
+      color: rgba(0, 255, 255, 0.9);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .panel-upload label::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+    .panel-upload label:hover {
+      border-color: rgba(0, 255, 255, 0.6);
+      background: rgba(0, 255, 255, 0.1);
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+    }
+    .panel-upload label:hover::before {
+      left: 100%;
+    }
+    .panel-upload input[type="file"] {
+      display: none;
+    }
+    #file-name {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 400;
+    }
+
+    .canvas-wrap {
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 200px;
+    }
+
+    #canvas {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .panel-controls {
+      padding: 1.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+    .field label {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    input[type="text"] {
+      padding: 0.85rem 1rem;
+      font-size: 0.95rem;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      color: rgba(255, 255, 255, 0.95);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    input[type="text"]::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: rgba(0, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 0 0 3px rgba(0, 255, 255, 0.1);
+    }
+
+    .color-row {
+      display: flex;
+      gap: 1.25rem;
+      align-items: flex-end;
+    }
+    .color-row > div {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .color-row label {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    input[type="color"] {
+      width: 70px;
+      height: 44px;
+      padding: 3px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.1);
+      transition: all 0.3s;
+    }
+    input[type="color"]:hover {
+      border-color: rgba(0, 255, 255, 0.5);
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+    }
+
+    .font-size-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .font-size-row input[type="range"] {
+      flex: 1;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      outline: none;
+    }
+    .font-size-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00ffff, #ff00ff);
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+      transition: all 0.3s;
+    }
+    .font-size-row input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 25px rgba(0, 255, 255, 0.8);
+    }
+    .font-size-row input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00ffff, #ff00ff);
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+    }
+    .font-size-row .value {
+      font-variant-numeric: tabular-nums;
+      min-width: 2.5rem;
+      font-size: 0.9rem;
+      color: rgba(0, 255, 255, 0.9);
+      font-weight: 500;
+    }
+
+    .btn-download {
+      padding: 1rem 2rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: rgba(0, 0, 0, 0.9);
+      background: linear-gradient(135deg, rgba(0, 255, 255, 0.9), rgba(255, 0, 255, 0.9));
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      box-shadow: 0 4px 20px rgba(0, 255, 255, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-download::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.5s;
+    }
+    .btn-download:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 30px rgba(0, 255, 255, 0.5);
+    }
+    .btn-download:hover::before {
+      left: 100%;
+    }
+    .btn-download:active {
+      transform: translateY(0);
+    }
+    .btn-download:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .template-gallery {
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .template-gallery label {
+      display: block;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.7);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.75rem;
+    }
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 0.75rem;
+    }
+    .template-item {
+      aspect-ratio: 1;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .template-item:hover {
+      border-color: rgba(0, 255, 255, 0.6);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0, 255, 255, 0.3);
+    }
+    .template-item.active {
+      border-color: rgba(0, 255, 255, 1);
+      box-shadow: 0 0 25px rgba(0, 255, 255, 0.6);
+    }
+    .template-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .template-item::after {
+      content: attr(data-name);
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+      color: white;
+      font-size: 0.7rem;
+      padding: 0.4rem 0.5rem;
+      text-transform: capitalize;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .template-item:hover::after {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <h1>Meme Generator</h1>
+
+  <div class="panel-upload glass">
+    <label for="file-input">Choose image</label>
+    <input type="file" id="file-input" accept="image/*">
+    <span id="file-name"></span>
+  </div>
+
+  <div class="template-gallery glass">
+    <label>Or choose a template</label>
+    <div class="template-grid" id="template-grid">
+      <!-- Templates will be loaded here -->
+    </div>
+  </div>
+
+  <div class="canvas-wrap glass">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div class="panel-controls glass">
+    <div class="field">
+      <label for="top-text">Top text</label>
+      <input type="text" id="top-text" placeholder="Top text" maxlength="100">
+    </div>
+    <div class="field">
+      <label for="bottom-text">Bottom text</label>
+      <input type="text" id="bottom-text" placeholder="Bottom text" maxlength="100">
+    </div>
+    <div class="field">
+      <label>Text size</label>
+      <div class="font-size-row">
+        <input type="range" id="font-size" min="24" max="72" value="48">
+        <span class="value" id="font-size-value">48</span> px
+      </div>
+    </div>
+    <div class="field">
+      <label>Colors</label>
+      <div class="color-row">
+        <div>
+          <label for="text-color" style="font-size: 0.8rem; display: block; margin-bottom: 0.25rem;">Text</label>
+          <input type="color" id="text-color" value="#ffffff">
+        </div>
+        <div>
+          <label for="border-color" style="font-size: 0.8rem; display: block; margin-bottom: 0.25rem;">Border</label>
+          <input type="color" id="border-color" value="#000000">
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <button type="button" class="btn-download" id="btn-download" disabled>Download</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const fileInput = document.getElementById('file-input');
+      const fileName = document.getElementById('file-name');
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const topTextInput = document.getElementById('top-text');
+      const bottomTextInput = document.getElementById('bottom-text');
+      const fontSizeInput = document.getElementById('font-size');
+      const fontSizeValue = document.getElementById('font-size-value');
+      const textColorInput = document.getElementById('text-color');
+      const borderColorInput = document.getElementById('border-color');
+      const btnDownload = document.getElementById('btn-download');
+      const templateGrid = document.getElementById('template-grid');
+
+      let sourceImage = null;
+      let currentTemplate = null;
+      const MAX_DISPLAY_WIDTH = 600;
+
+      // Text positioning
+      let topTextX = null;
+      let topTextY = null;
+      let bottomTextX = null;
+      let bottomTextY = null;
+      let isDragging = false;
+      let dragTarget = null; // 'top' or 'bottom'
+      let dragOffsetX = 0;
+      let dragOffsetY = 0;
+
+      // Template images from assets folder
+      const templates = [
+        { name: 'cat', path: 'assets/cat.jpg' },
+        { name: 'dog', path: 'assets/dog.jpg' },
+        { name: 'surprised', path: 'assets/surprised.jpg' },
+        { name: 'thinking', path: 'assets/thinking.jpg' },
+        { name: 'happy', path: 'assets/happy.jpg' }
+      ];
+
+      // Load template images into gallery
+      function loadTemplates() {
+        templates.forEach(template => {
+          const item = document.createElement('div');
+          item.className = 'template-item';
+          item.setAttribute('data-name', template.name);
+          item.setAttribute('data-path', template.path);
+          
+          const img = document.createElement('img');
+          img.src = template.path;
+          img.alt = template.name;
+          img.loading = 'lazy';
+          
+          item.appendChild(img);
+          item.addEventListener('click', function() {
+            loadTemplate(template.path, template.name);
+            // Update active state
+            document.querySelectorAll('.template-item').forEach(el => el.classList.remove('active'));
+            item.classList.add('active');
+            currentTemplate = template.name;
+          });
+          
+          templateGrid.appendChild(item);
+        });
+      }
+
+      // Load a template image
+      function loadTemplate(path, name) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function() {
+          sourceImage = img;
+          fileName.textContent = `${name}.jpg`;
+          // Reset text positions when loading template
+          topTextX = null;
+          topTextY = null;
+          bottomTextX = null;
+          bottomTextY = null;
+          draw();
+          enableDownload();
+        };
+        img.onerror = function() {
+          fileName.textContent = `Failed to load ${name}`;
+        };
+        img.src = path;
+      }
+
+      // Initialize templates
+      loadTemplates();
+
+      function draw() {
+        if (!sourceImage) {
+          canvas.width = 1;
+          canvas.height = 1;
+          ctx.clearRect(0, 0, 1, 1);
+          return;
+        }
+
+        let w = sourceImage.width;
+        let h = sourceImage.height;
+        if (w > MAX_DISPLAY_WIDTH) {
+          h = (MAX_DISPLAY_WIDTH / w) * h;
+          w = MAX_DISPLAY_WIDTH;
+        }
+        canvas.width = w;
+        canvas.height = h;
+
+        ctx.drawImage(sourceImage, 0, 0, w, h);
+
+        const topText = (topTextInput.value || '').trim();
+        const bottomText = (bottomTextInput.value || '').trim();
+        if (!topText && !bottomText) return;
+
+        const fontSize = parseInt(fontSizeInput.value, 10);
+        const fillColor = textColorInput.value;
+        const strokeColor = borderColorInput.value;
+        ctx.font = `${fontSize}px "Impact", "Arial Black", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = strokeColor;
+
+        const padding = 20;
+        const centerX = w / 2;
+
+        // Use custom positions if set, otherwise use defaults
+        const topX = topTextX !== null ? topTextX : centerX;
+        const topY = topTextY !== null ? topTextY : padding;
+        const bottomX = bottomTextX !== null ? bottomTextX : centerX;
+        const bottomY = bottomTextY !== null ? bottomTextY : h - padding;
+
+        if (topText) {
+          ctx.textBaseline = 'top';
+          ctx.strokeText(topText, topX, topY);
+          ctx.fillStyle = fillColor;
+          ctx.fillText(topText, topX, topY);
+        }
+        if (bottomText) {
+          ctx.textBaseline = 'bottom';
+          ctx.strokeText(bottomText, bottomX, bottomY);
+          ctx.fillStyle = fillColor;
+          ctx.fillText(bottomText, bottomX, bottomY);
+        }
+      }
+
+      // Get mouse position relative to canvas
+      function getMousePos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+          x: (e.clientX - rect.left) * scaleX,
+          y: (e.clientY - rect.top) * scaleY
+        };
+      }
+
+      // Check if point is near text
+      function isNearText(x, y, text, textX, textY, fontSize) {
+        ctx.font = `${fontSize}px "Impact", "Arial Black", sans-serif`;
+        ctx.textAlign = 'center';
+        const metrics = ctx.measureText(text);
+        const textWidth = metrics.width;
+        const textHeight = fontSize;
+        const padding = 10;
+        return x >= textX - textWidth/2 - padding &&
+               x <= textX + textWidth/2 + padding &&
+               y >= textY - padding &&
+               y <= textY + textHeight + padding;
+      }
+
+      // Mouse down - start dragging
+      canvas.addEventListener('mousedown', function(e) {
+        if (!sourceImage) return;
+        
+        const pos = getMousePos(e);
+        const topText = (topTextInput.value || '').trim();
+        const bottomText = (bottomTextInput.value || '').trim();
+        const fontSize = parseInt(fontSizeInput.value, 10);
+        
+        // Get current text positions
+        const w = canvas.width;
+        const h = canvas.height;
+        const centerX = w / 2;
+        const padding = 20;
+        const topX = topTextX !== null ? topTextX : centerX;
+        const topY = topTextY !== null ? topTextY : padding;
+        const bottomX = bottomTextX !== null ? bottomTextX : centerX;
+        const bottomY = bottomTextY !== null ? bottomTextY : h - padding;
+
+        // Check which text is being clicked
+        if (topText && isNearText(pos.x, pos.y, topText, topX, topY, fontSize)) {
+          isDragging = true;
+          dragTarget = 'top';
+          dragOffsetX = pos.x - topX;
+          dragOffsetY = pos.y - topY;
+          canvas.style.cursor = 'move';
+        } else if (bottomText && isNearText(pos.x, pos.y, bottomText, bottomX, bottomY, fontSize)) {
+          isDragging = true;
+          dragTarget = 'bottom';
+          dragOffsetX = pos.x - bottomX;
+          dragOffsetY = pos.y - bottomY;
+          canvas.style.cursor = 'move';
+        }
+      });
+
+      // Mouse move - update position while dragging
+      canvas.addEventListener('mousemove', function(e) {
+        if (!sourceImage) return;
+        
+        const pos = getMousePos(e);
+        const topText = (topTextInput.value || '').trim();
+        const bottomText = (bottomTextInput.value || '').trim();
+        const fontSize = parseInt(fontSizeInput.value, 10);
+        
+        if (isDragging && dragTarget) {
+          if (dragTarget === 'top' && topText) {
+            topTextX = pos.x - dragOffsetX;
+            topTextY = pos.y - dragOffsetY;
+            draw();
+          } else if (dragTarget === 'bottom' && bottomText) {
+            bottomTextX = pos.x - dragOffsetX;
+            bottomTextY = pos.y - dragOffsetY;
+            draw();
+          }
+        } else {
+          // Change cursor when hovering over text
+          const w = canvas.width;
+          const h = canvas.height;
+          const centerX = w / 2;
+          const padding = 20;
+          const topX = topTextX !== null ? topTextX : centerX;
+          const topY = topTextY !== null ? topTextY : padding;
+          const bottomX = bottomTextX !== null ? bottomTextX : centerX;
+          const bottomY = bottomTextY !== null ? bottomTextY : h - padding;
+
+          if ((topText && isNearText(pos.x, pos.y, topText, topX, topY, fontSize)) ||
+              (bottomText && isNearText(pos.x, pos.y, bottomText, bottomX, bottomY, fontSize))) {
+            canvas.style.cursor = 'move';
+          } else {
+            canvas.style.cursor = 'default';
+          }
+        }
+      });
+
+      // Mouse up - stop dragging
+      canvas.addEventListener('mouseup', function() {
+        if (isDragging) {
+          isDragging = false;
+          dragTarget = null;
+          canvas.style.cursor = 'default';
+        }
+      });
+
+      // Mouse leave - stop dragging if mouse leaves canvas
+      canvas.addEventListener('mouseleave', function() {
+        if (isDragging) {
+          isDragging = false;
+          dragTarget = null;
+          canvas.style.cursor = 'default';
+        }
+      });
+
+      function enableDownload() {
+        btnDownload.disabled = !sourceImage;
+      }
+
+      fileInput.addEventListener('change', function () {
+        const file = this.files && this.files[0];
+        if (!file) {
+          fileName.textContent = '';
+          sourceImage = null;
+          currentTemplate = null;
+          // Reset text positions
+          topTextX = null;
+          topTextY = null;
+          bottomTextX = null;
+          bottomTextY = null;
+          draw();
+          enableDownload();
+          // Clear active template
+          document.querySelectorAll('.template-item').forEach(el => el.classList.remove('active'));
+          return;
+        }
+        fileName.textContent = file.name;
+        currentTemplate = null;
+        // Reset text positions when loading new image
+        topTextX = null;
+        topTextY = null;
+        bottomTextX = null;
+        bottomTextY = null;
+        // Clear active template when uploading custom image
+        document.querySelectorAll('.template-item').forEach(el => el.classList.remove('active'));
+        const img = new Image();
+        img.onload = function () {
+          sourceImage = img;
+          draw();
+          enableDownload();
+        };
+        img.onerror = function () {
+          fileName.textContent = 'Failed to load image';
+          sourceImage = null;
+          draw();
+          enableDownload();
+        };
+        img.src = URL.createObjectURL(file);
+      });
+
+      topTextInput.addEventListener('input', draw);
+      bottomTextInput.addEventListener('input', draw);
+      textColorInput.addEventListener('input', draw);
+      borderColorInput.addEventListener('input', draw);
+
+      fontSizeInput.addEventListener('input', function () {
+        fontSizeValue.textContent = this.value;
+        draw();
+      });
+
+      btnDownload.addEventListener('click', function () {
+        if (!sourceImage) return;
+        const w = sourceImage.width;
+        const h = sourceImage.height;
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = w;
+        tempCanvas.height = h;
+        const tctx = tempCanvas.getContext('2d');
+        tctx.drawImage(sourceImage, 0, 0, w, h);
+
+        const topText = (topTextInput.value || '').trim();
+        const bottomText = (bottomTextInput.value || '').trim();
+        const fontSize = Math.max(24, (fontSizeInput.value / MAX_DISPLAY_WIDTH) * w);
+        const fillColor = textColorInput.value;
+        const strokeColor = borderColorInput.value;
+        tctx.font = `${fontSize}px "Impact", "Arial Black", sans-serif`;
+        tctx.textAlign = 'center';
+        tctx.lineWidth = Math.max(2, (4 / MAX_DISPLAY_WIDTH) * w);
+        tctx.strokeStyle = strokeColor;
+        
+        // Scale positions from display canvas to full resolution
+        const scaleX = w / (sourceImage.width > MAX_DISPLAY_WIDTH ? MAX_DISPLAY_WIDTH : sourceImage.width);
+        const scaleY = h / (sourceImage.height > MAX_DISPLAY_WIDTH ? (MAX_DISPLAY_WIDTH / sourceImage.width) * sourceImage.height : sourceImage.height);
+        
+        const padding = (20 / MAX_DISPLAY_WIDTH) * w;
+        const centerX = w / 2;
+        
+        // Calculate positions for full resolution
+        const displayW = sourceImage.width > MAX_DISPLAY_WIDTH ? MAX_DISPLAY_WIDTH : sourceImage.width;
+        const displayH = sourceImage.height > MAX_DISPLAY_WIDTH ? (MAX_DISPLAY_WIDTH / sourceImage.width) * sourceImage.height : sourceImage.height;
+        
+        const topX = topTextX !== null ? (topTextX / displayW) * w : centerX;
+        const topY = topTextY !== null ? (topTextY / displayH) * h : padding;
+        const bottomX = bottomTextX !== null ? (bottomTextX / displayW) * w : centerX;
+        const bottomY = bottomTextY !== null ? (bottomTextY / displayH) * h : h - padding;
+
+        if (topText) {
+          tctx.textBaseline = 'top';
+          tctx.strokeText(topText, topX, topY);
+          tctx.fillStyle = fillColor;
+          tctx.fillText(topText, topX, topY);
+        }
+        if (bottomText) {
+          tctx.textBaseline = 'bottom';
+          tctx.strokeText(bottomText, bottomX, bottomY);
+          tctx.fillStyle = fillColor;
+          tctx.fillText(bottomText, bottomX, bottomY);
+        }
+
+        const data = tempCanvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = data;
+        a.download = 'meme.png';
+        a.click();
+      });
+    })();
+  </script>
+</body>
+</html>
